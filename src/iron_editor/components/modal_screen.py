@@ -1,4 +1,4 @@
-"""Modales de la aplicación (crear archivo, crear carpeta)."""
+"""Modales de la aplicación (crear archivo, crear carpeta, renombrar, eliminar)."""
 
 import pathlib
 from textual.app import ComposeResult
@@ -8,7 +8,6 @@ from textual.screen import ModalScreen
 from textual.widgets import Button, Input, RichLog, Static
 
 from iron_editor.components.directory import Directory
-from iron_editor.components.ironedit import IronEdit
 from iron_editor.components.signer import sign_content, load_secret_key
 
 
@@ -45,8 +44,7 @@ class CreateFileModal(ModalScreen):
                 else:
                     log.write(f"File already exists: {p}")
                 try:
-                    editor = self.app.query_one(IronEdit)
-                    editor.open_file(str(p))
+                    self.app.open_file_in_tab(p.resolve())
                 except Exception:
                     pass
                 try:
@@ -98,3 +96,66 @@ class CreateFolderModal(ModalScreen):
 
     def action_dismiss(self) -> None:
         self.app.pop_screen()
+
+
+class RenameModal(ModalScreen):
+    BINDINGS = [Binding("escape", "dismiss", "Cancelar")]
+
+    def __init__(self, path: pathlib.Path) -> None:
+        super().__init__()
+        self._path = path
+
+    def compose(self) -> ComposeResult:
+        yield Static(f"Renombrar: {self._path.name}", id="rename_title")
+        yield Input(value=self._path.name, id="new_name")
+        yield Horizontal(
+            Button("Renombrar", id="rename_confirm"),
+            Button("Cancelar", id="rename_cancel"),
+        )
+
+    def on_mount(self) -> None:
+        inp = self.query_one("#new_name", Input)
+        inp.focus()
+        inp.cursor_position = len(self._path.stem)
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "rename_cancel":
+            self.dismiss(None)
+            return
+        if event.button.id == "rename_confirm":
+            new_name = self.query_one("#new_name", Input).value.strip()
+            if new_name and new_name != self._path.name:
+                self.dismiss(new_name)
+            else:
+                self.dismiss(None)
+
+    def action_dismiss(self) -> None:
+        self.dismiss(None)
+
+
+class DeleteConfirmModal(ModalScreen):
+    BINDINGS = [Binding("escape", "dismiss", "Cancelar")]
+
+    def __init__(self, path: pathlib.Path) -> None:
+        super().__init__()
+        self._path = path
+
+    def compose(self) -> ComposeResult:
+        yield Static(
+            f"Eliminar '{self._path.name}'?\nEsta acción no se puede deshacer.",
+            id="delete_title",
+        )
+        yield Horizontal(
+            Button("Eliminar", id="delete_confirm", variant="error"),
+            Button("Cancelar", id="delete_cancel"),
+        )
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "delete_cancel":
+            self.dismiss(False)
+            return
+        if event.button.id == "delete_confirm":
+            self.dismiss(True)
+
+    def action_dismiss(self) -> None:
+        self.dismiss(False)

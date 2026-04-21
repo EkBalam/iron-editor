@@ -1,5 +1,6 @@
 import dataclasses
 from textual.binding import Binding
+from textual.message import Message
 from textual.widgets import TextArea, RichLog
 import random
 import pathlib
@@ -7,6 +8,12 @@ from iron_editor.components.signer import sign_content, strip_and_verify, load_s
 
 
 class IronEdit(TextArea):
+
+    class TitleChanged(Message):
+        def __init__(self, editor: "IronEdit", has_unsaved: bool) -> None:
+            super().__init__()
+            self.editor = editor
+            self.has_unsaved = has_unsaved
 
     BINDINGS = [
         Binding(key="shift+n", action="none", show=False),
@@ -35,6 +42,7 @@ class IronEdit(TextArea):
             ]
             self._bindings.key_to_bindings[key] = new_list
             self.refresh_bindings()
+        self.post_message(self.TitleChanged(self, show_save))
 
     def on_text_area_changed(self) -> None:
         self._update_save_binding_visibility()
