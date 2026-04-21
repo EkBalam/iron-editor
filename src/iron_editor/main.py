@@ -5,7 +5,7 @@ import pathlib
 
 from textual.app import App, ComposeResult
 from textual.binding import Binding
-from textual.containers import Horizontal
+from textual.containers import Horizontal, Vertical
 from textual.widgets import Footer, Header, RichLog, TabbedContent, TabPane
 
 from iron_editor.components.directory import Directory
@@ -16,6 +16,7 @@ from iron_editor.components.modal_screen import (
     DeleteConfirmModal,
     RenameModal,
 )
+from iron_editor.components.terminal import TerminalWidget
 
 
 class TextAreaExample(App):
@@ -25,6 +26,9 @@ class TextAreaExample(App):
         height: 100%;
         border-right: heavy $secondary;
         padding: 1;
+    }
+    #editor-area {
+        height: 1fr;
     }
     TabbedContent {
         height: 1fr;
@@ -36,6 +40,13 @@ class TextAreaExample(App):
     IronEdit {
         height: 1fr;
     }
+    TerminalWidget {
+        height: 12;
+        display: none;
+    }
+    TerminalWidget.visible {
+        display: block;
+    }
     """
 
     BINDINGS = [
@@ -43,6 +54,7 @@ class TextAreaExample(App):
         Binding(key="n", action="create_file", description="Create new file", key_display="N"),
         Binding(key="shift+n", action="create_folder", description="Create new folder", key_display="Shift+N"),
         Binding(key="ctrl+w", action="close_tab", description="Close tab", key_display="Ctrl+W"),
+        Binding(key="ctrl+t", action="toggle_terminal", description="Terminal", key_display="Ctrl+T"),
     ]
 
     def __init__(self, path="."):
@@ -53,7 +65,9 @@ class TextAreaExample(App):
         yield Header(show_clock=True)
         with Horizontal():
             yield Directory(self.path)
-            yield TabbedContent(id="editor-tabs")
+            with Vertical(id="editor-area"):
+                yield TabbedContent(id="editor-tabs")
+                yield TerminalWidget(id="terminal")
             yield RichLog(id="log")
         yield Footer(show_command_palette=True)
 
@@ -184,6 +198,20 @@ class TextAreaExample(App):
         active_id = tabs.active
         if active_id:
             tabs.remove_pane(active_id)
+
+    def action_toggle_terminal(self) -> None:
+        terminal = self.query_one("#terminal", TerminalWidget)
+        if terminal.has_class("visible"):
+            terminal.remove_class("visible")
+            try:
+                tabs = self.query_one("#editor-tabs", TabbedContent)
+                pane = tabs.get_pane(tabs.active)
+                pane.query_one(IronEdit).focus()
+            except Exception:
+                pass
+        else:
+            terminal.add_class("visible")
+            terminal.focus()
 
 
 def main():
