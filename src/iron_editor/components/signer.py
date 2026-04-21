@@ -55,13 +55,15 @@ def sign_content(content: str, filename: str, ext: str, secret_key: str) -> str:
 
     prefix, suffix = style
     timestamp = str(int(time.time()))
-    mac = _compute_hmac(content, filename, timestamp, secret_key)
+    body = content.rstrip("\n")
+    # HMAC se computa sobre el body tal como quedará en el archivo (body + "\n"),
+    # para que strip_and_verify pueda reconstruir el mismo valor desde clean_body.
+    mac = _compute_hmac(f"{body}\n", filename, timestamp, secret_key)
 
     sig_line = f"{prefix} {_TAG}:{timestamp}:{mac}"
     if suffix:
         sig_line = f"{sig_line} {suffix}"
 
-    body = content.rstrip("\n")
     return f"{body}\n{sig_line}\n"
 
 

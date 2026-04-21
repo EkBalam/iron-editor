@@ -71,8 +71,8 @@ class TextAreaExample(App):
         tab_id = self._get_tab_id(str(path))
 
         # Si ya está abierto, activar ese tab
-        existing_ids = [tab.id for tab in tabs.query("Tab")]
-        if tab_id in existing_ids:
+        existing_pane_ids = [pane.id for pane in tabs.query(TabPane)]
+        if tab_id in existing_pane_ids:
             tabs.active = tab_id
             try:
                 pane = tabs.get_pane(tab_id)
@@ -100,16 +100,16 @@ class TextAreaExample(App):
     def _update_tab_after_rename(self, old_path_str: str, new_path: pathlib.Path) -> None:
         tabs = self.query_one("#editor-tabs", TabbedContent)
         old_tab_id = self._get_tab_id(old_path_str)
-        existing_ids = [tab.id for tab in tabs.query("Tab")]
-        if old_tab_id in existing_ids:
+        existing_pane_ids = [pane.id for pane in tabs.query(TabPane)]
+        if old_tab_id in existing_pane_ids:
             tabs.remove_pane(old_tab_id)
             self.open_file_in_tab(new_path)
 
     def _close_tab_for_path(self, path_str: str) -> None:
         tabs = self.query_one("#editor-tabs", TabbedContent)
         tab_id = self._get_tab_id(path_str)
-        existing_ids = [tab.id for tab in tabs.query("Tab")]
-        if tab_id in existing_ids:
+        existing_pane_ids = [pane.id for pane in tabs.query(TabPane)]
+        if tab_id in existing_pane_ids:
             tabs.remove_pane(tab_id)
 
     # ── Event handlers ─────────────────────────────────────────────────────────
