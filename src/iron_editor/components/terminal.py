@@ -4,6 +4,7 @@ import os
 import subprocess
 import sys
 import threading
+import time
 from pathlib import Path
 
 from textual import events
@@ -41,7 +42,6 @@ class TerminalWidget(Vertical):
         self.process: subprocess.Popen | None = None
         self.output_thread: threading.Thread | None = None
         self.input_buffer = ""
-        self.can_input = False
         self._history: list[str] = []
         self._history_pos = -1
 
@@ -63,20 +63,23 @@ class TerminalWidget(Vertical):
         key = event.key
         character = event.character
 
-        # Proceso corriendo y esperando input
+        # Consume el evento — evita que bindings del App se activen.
+        # Excepción: ctrl+t lo dejamos burbujear para que el App pueda cerrar el terminal.
+        if key != "ctrl+t":
+            event.stop()
+
+        # Proceso corriendo — siempre permitir escribir
         if self.process and self.process.poll() is None:
-            if self.can_input:
-                if key == "enter":
-                    self._send_to_process(self.input_buffer)
-                    event.prevent_default()
-                elif key == "backspace":
-                    self.input_buffer = self.input_buffer[:-1]
-                    self._update_prompt()
-                    event.prevent_default()
-                elif character and character.isprintable():
-                    self.input_buffer += character
-                    self._update_prompt()
-                    event.prevent_default()
+            if key == "ctrl+c":
+                self.action_stop_process()
+            elif key == "enter":
+                self._send_to_process(self.input_buffer)
+            elif key == "backspace":
+                self.input_buffer = self.input_buffer[:-1]
+                self._update_prompt()
+            elif character and character.isprintable():
+                self.input_buffer += character
+                self._update_prompt()
             return
 
         # Sin proceso corriendo: modo comando
@@ -135,7 +138,6 @@ class TerminalWidget(Vertical):
     def _builtin_cd(self, target: str) -> None:
         log = self.query_one("#terminal_output", RichLog)
         try:
-            new_dir = str(Path(self.current_dir / Path(target)).resolve()) if not Path(target).is_absolute() else str(Path(target).resolve())
             new_path = Path(self.current_dir) / target if not Path(target).is_absolute() else Path(target)
             new_path = new_path.resolve()
             if new_path.is_dir():
@@ -162,7 +164,6 @@ class TerminalWidget(Vertical):
                 cwd=self.current_dir,
                 env=env,
             )
-            self.can_input = False
             self.input_buffer = ""
             self.output_thread = threading.Thread(
                 target=self._read_output, daemon=True
@@ -202,14 +203,12 @@ class TerminalWidget(Vertical):
                         self.app.call_from_thread(log.write, buffer.rstrip("\r\n"))
                         buffer = ""
                         chars_no_newline = 0
-                        self.app.call_from_thread(setattr, self, "can_input", False)
                     elif buffer.endswith(": ") or chars_no_newline > 80:
                         self.app.call_from_thread(log.write, buffer)
                         buffer = ""
                         chars_no_newline = 0
-                        self.app.call_from_thread(setattr, self, "can_input", True)
+
                 except Exception:
-                    import time
                     time.sleep(0.01)
 
             try:
@@ -233,7 +232,6 @@ class TerminalWidget(Vertical):
             self.app.call_from_thread(log.write, f"[red]Error: {e}[/red]")
         finally:
             self.process = None
-            self.app.call_from_thread(setattr, self, "can_input", False)
             self.app.call_from_thread(self._update_prompt)
 
     def action_run_current_file(self) -> None:
@@ -272,7 +270,6 @@ class TerminalWidget(Vertical):
             except Exception as e:
                 log.write(f"[red]{e}[/red]")
         self.process = None
-        self.can_input = False
 
     def action_clear(self) -> None:
         self.query_one("#terminal_output", RichLog).clear()
