@@ -1,7 +1,7 @@
 import dataclasses
 from textual.binding import Binding
 from textual.message import Message
-from textual.widgets import TextArea, RichLog
+from textual.widgets import TextArea
 import random
 import pathlib
 from iron_editor.components.signer import sign_content, strip_and_verify, load_secret_key
@@ -14,6 +14,11 @@ class IronEdit(TextArea):
             super().__init__()
             self.editor = editor
             self.has_unsaved = has_unsaved
+
+    class LogRequested(Message):
+        def __init__(self, text: str) -> None:
+            super().__init__()
+            self.text = text
 
     BINDINGS = [
         Binding(key="shift+n", action="none", show=False),
@@ -64,9 +69,11 @@ class IronEdit(TextArea):
         event.text = "\n".join(shuffled)
         return super()._on_paste(event)
 
+    def _log(self, text: str) -> None:
+        self.post_message(self.LogRequested(text))
+
     def open_file(self, path: str) -> None:
-        text_log = self.app.query_one(RichLog)
-        text_log.write(f"Attempting to open file: {path}")
+        self._log(f"Attempting to open file: {path}")
         try:
             p = pathlib.Path(path)
             if p.is_file():
@@ -83,7 +90,7 @@ class IronEdit(TextArea):
                         severity="error",
                         timeout=6,
                     )
-                    text_log.write(f"Bloqueado (sin firma): {path}")
+                    self._log(f"Bloqueado (sin firma): {path}")
                     return
                 if not is_valid:
                     self.app.notify(
@@ -92,22 +99,21 @@ class IronEdit(TextArea):
                         severity="error",
                         timeout=6,
                     )
-                    text_log.write(f"Bloqueado (firma inválida): {path}")
+                    self._log(f"Bloqueado (firma inválida): {path}")
                     return
                 self.text = clean_content
                 self.current_file = str(p)
                 self._saved_text = self.text
                 self.language = self.__get_language_from_extension(p.suffix)
-                text_log.write(f"Abierto: {path} | Lenguaje: {self.language}")
+                self._log(f"Abierto: {path} | Lenguaje: {self.language}")
                 self._update_save_binding_visibility()
         except Exception as e:
-            text_log.write(f"Error opening file: {e}")
+            self._log(f"Error opening file: {e}")
 
     def action_save(self) -> None:
         self.save_file()
 
     def save_file(self) -> None:
-        text_log = self.app.query_one(RichLog)
         if self.current_file:
             try:
                 p = pathlib.Path(self.current_file)
@@ -117,11 +123,11 @@ class IronEdit(TextArea):
                 p.write_text(signed_text, encoding="utf-8")
                 self._saved_text = self.text
                 self._update_save_binding_visibility()
-                text_log.write(f"Guardado: {self.current_file}")
+                self._log(f"Guardado: {self.current_file}")
             except Exception as e:
-                text_log.write(f"Error saving file: {e}")
+                self._log(f"Error saving file: {e}")
         else:
-            text_log.write("No hay archivo para guardar")
+            self._log("No hay archivo para guardar")
 
     def __get_language_from_extension(self, ext: str) -> str:
         if not ext:
