@@ -18,6 +18,7 @@ class TerminalWidget(Vertical):
     DEFAULT_CSS = """
     TerminalWidget {
         height: 12;
+        min-height: 4;
         border-top: heavy $secondary;
         padding: 0 1;
     }
@@ -34,6 +35,8 @@ class TerminalWidget(Vertical):
         Binding("ctrl+r", "run_current_file", "Run file", show=True),
         Binding("ctrl+c", "stop_process", "Stop", show=True),
         Binding("ctrl+l", "clear", "Clear", show=True),
+        Binding("ctrl+up", "grow", "Más alto", show=True),
+        Binding("ctrl+down", "shrink", "Más bajo", show=True),
     ]
 
     def __init__(self, *args, **kwargs):
@@ -65,7 +68,7 @@ class TerminalWidget(Vertical):
 
         # Consume el evento — evita que bindings del App se activen.
         # Excepción: ctrl+t lo dejamos burbujear para que el App pueda cerrar el terminal.
-        if key != "ctrl+t":
+        if key not in ("ctrl+t", "ctrl+up", "ctrl+down"):
             event.stop()
 
         # Proceso corriendo — siempre permitir escribir
@@ -273,3 +276,9 @@ class TerminalWidget(Vertical):
 
     def action_clear(self) -> None:
         self.query_one("#terminal_output", RichLog).clear()
+
+    def action_grow(self) -> None:
+        self.styles.height = max(4, (self.size.height or 12) + 2)
+
+    def action_shrink(self) -> None:
+        self.styles.height = max(4, (self.size.height or 12) - 2)

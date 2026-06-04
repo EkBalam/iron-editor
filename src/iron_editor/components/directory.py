@@ -22,6 +22,7 @@ class Directory(DirectoryTree):
             self.path = path
 
     BINDINGS = [
+        Binding("f5", "refresh_tree", "Refrescar", show=True),
         Binding("f2", "rename", "Renombrar", show=True),
         Binding("r", "rename", "Renombrar", show=False),
         Binding("delete", "delete_file", "Eliminar", show=True),
@@ -51,6 +52,9 @@ class Directory(DirectoryTree):
                 self._selected_path = path
             else:
                 self._selected_path = None
+
+    def action_refresh_tree(self) -> None:
+        self.reload()
 
     def action_rename(self) -> None:
         if self._selected_path and self._selected_path.is_file():

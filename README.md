@@ -129,6 +129,24 @@ Iron Editor firma los archivos que guarda. Si intentas abrir un archivo que **no
 
 ---
 
+## Changelog
+
+### v0.0.3
+- Terminal: resize panel with `Ctrl+Up` / `Ctrl+Down`
+- Terminal: added `min-height` to prevent collapsing too small
+- File explorer: `F5` refreshes the directory tree
+- pyproject.toml: corrected author email and GitHub URLs
+
+### v0.0.2
+- Integrated terminal panel with command history and `cd` support
+- `Ctrl+T` toggle for terminal, `Ctrl+R` to run current file
+- Log panel toggle (`Ctrl+L`) and last-log in status bar
+
+### v0.0.1
+- Initial release: syntax highlighting, multi-tab editor, file explorer, HMAC file signing
+
+---
+
 ## License
 
 `iron-editor` is distributed under the terms of the [MIT](https://spdx.org/licenses/MIT.html) license.
