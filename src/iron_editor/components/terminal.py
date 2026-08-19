@@ -2,7 +2,6 @@
 
 import os
 import subprocess
-import sys
 import threading
 import time
 from pathlib import Path
@@ -32,7 +31,6 @@ class TerminalWidget(Vertical):
     """
 
     BINDINGS = [
-        Binding("ctrl+r", "run_current_file", "Run file", show=True),
         Binding("ctrl+c", "stop_process", "Stop", show=True),
         Binding("ctrl+l", "clear", "Clear", show=True),
         Binding("ctrl+up", "grow", "Más alto", show=True),
@@ -236,28 +234,6 @@ class TerminalWidget(Vertical):
         finally:
             self.process = None
             self.app.call_from_thread(self._update_prompt)
-
-    def action_run_current_file(self) -> None:
-        """Corre el archivo del tab activo si es .py."""
-        log = self.query_one("#terminal_output", RichLog)
-        try:
-            from iron_editor.components.ironedit import IronEdit
-            from textual.widgets import TabbedContent, TabPane
-            tabs = self.app.query_one("#editor-tabs", TabbedContent)
-            pane = tabs.get_pane(tabs.active)
-            editor = pane.query_one(IronEdit)
-            if editor.current_file:
-                fp = Path(editor.current_file)
-                if fp.suffix == ".py":
-                    cmd = f"{sys.executable} \"{fp}\""
-                    log.write(f"[bold cyan]{Path(self.current_dir).name}$[/bold cyan] {cmd}")
-                    self._run_external(cmd)
-                else:
-                    log.write("[yellow]Solo archivos .py[/yellow]")
-            else:
-                log.write("[yellow]No hay archivo abierto[/yellow]")
-        except Exception as e:
-            log.write(f"[red]✗ {e}[/red]")
 
     def action_stop_process(self) -> None:
         """Termina el proceso corriendo."""
