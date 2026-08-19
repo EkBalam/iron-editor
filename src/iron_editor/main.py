@@ -14,8 +14,10 @@ from iron_editor.components.modal_screen import (
     CreateFileModal,
     CreateFolderModal,
     DeleteConfirmModal,
+    IdentityModal,
     RenameModal,
 )
+from iron_editor.components.signer import load_identity
 from iron_editor.components.terminal import TerminalWidget
 
 
@@ -71,6 +73,7 @@ class TextAreaExample(App):
         Binding(key="ctrl+w", action="close_tab", description="Close tab", key_display="Ctrl+W"),
         Binding(key="ctrl+t", action="toggle_terminal", description="Terminal", key_display="Ctrl+T"),
         Binding(key="ctrl+l", action="toggle_log", description="Log", key_display="Ctrl+L"),
+        Binding(key="f3", action="edit_identity", description="Identidad", key_display="F3"),
     ]
 
     def __init__(self, path="."):
@@ -89,7 +92,19 @@ class TextAreaExample(App):
         yield Footer(show_command_palette=True)
 
     def on_mount(self) -> None:
-        self.title = "IronEdit"
+        self._refresh_title()
+        student_id, _ = load_identity()
+        if not student_id:
+            self.push_screen(IdentityModal(), self._on_identity_set)
+
+    def _refresh_title(self) -> None:
+        student_id, _ = load_identity()
+        self.title = f"IronEdit — {student_id}" if student_id else "IronEdit"
+
+    def _on_identity_set(self, student_id: str | None) -> None:
+        self._refresh_title()
+        if student_id:
+            self.log_msg(f"Identidad guardada: {student_id}")
 
     def log_msg(self, text: str) -> None:
         self.query_one("#log", RichLog).write(text)
@@ -205,6 +220,9 @@ class TextAreaExample(App):
         self.push_screen(DeleteConfirmModal(path), handle_delete)
 
     # ── Actions ────────────────────────────────────────────────────────────────
+
+    def action_edit_identity(self) -> None:
+        self.push_screen(IdentityModal(), self._on_identity_set)
 
     def action_create_file(self) -> None:
         self.push_screen(CreateFileModal())

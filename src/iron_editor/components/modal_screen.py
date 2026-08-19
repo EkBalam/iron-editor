@@ -1,6 +1,7 @@
-"""Modales de la aplicación (crear archivo, crear carpeta, renombrar, eliminar)."""
+"""Modales de la aplicación (crear archivo, crear carpeta, renombrar, eliminar, identidad)."""
 
 import pathlib
+import secrets
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal
@@ -8,7 +9,7 @@ from textual.screen import ModalScreen
 from textual.widgets import Button, Input, RichLog, Static
 
 from iron_editor.components.directory import Directory
-from iron_editor.components.signer import sign_content, load_secret_key
+from iron_editor.components.signer import sign_content, load_identity, save_identity
 
 
 class CreateFileModal(ModalScreen):
@@ -37,8 +38,8 @@ class CreateFileModal(ModalScreen):
                     p.parent.mkdir(parents=True, exist_ok=True)
                 if not p.exists():
                     ext = p.suffix.lower()
-                    secret_key = load_secret_key()
-                    initial_content = sign_content("", p.name, ext, secret_key)
+                    student_id, secret_key = load_identity()
+                    initial_content = sign_content("", p.name, ext, secret_key, student_id)
                     p.write_text(initial_content, encoding="utf-8")
                     log.write(f"Created file: {p}")
                 else:
@@ -159,3 +160,41 @@ class DeleteConfirmModal(ModalScreen):
 
     def action_dismiss(self) -> None:
         self.dismiss(False)
+
+
+class IdentityModal(ModalScreen):
+    """Captura el nombre/ID del alumno y genera su clave única de firma."""
+
+    BINDINGS = [Binding("escape", "dismiss", "Omitir")]
+
+    def compose(self) -> ComposeResult:
+        student_id, _ = load_identity()
+        yield Static("Identidad del alumno", id="identity_title")
+        yield Static(
+            "Escribe tu nombre o matrícula. IronEdit generará una clave única "
+            "para firmar tus archivos y poder identificarlos.",
+            id="identity_help",
+        )
+        yield Input(value=student_id or "", placeholder="Nombre o matrícula", id="identity_input")
+        yield Horizontal(
+            Button("Guardar", id="identity_save"),
+            Button("Omitir", id="identity_skip"),
+        )
+
+    def on_mount(self) -> None:
+        self.query_one("#identity_input", Input).focus()
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "identity_skip":
+            self.dismiss(None)
+            return
+        if event.button.id == "identity_save":
+            name = self.query_one("#identity_input", Input).value.strip()
+            if not name:
+                return
+            secret_key = secrets.token_hex(32)
+            save_identity(name, secret_key)
+            self.dismiss(name)
+
+    def action_dismiss(self) -> None:
+        self.dismiss(None)

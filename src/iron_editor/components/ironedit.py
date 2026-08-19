@@ -4,7 +4,7 @@ from textual.message import Message
 from textual.widgets import TextArea
 import random
 import pathlib
-from iron_editor.components.signer import sign_content, strip_and_verify, load_secret_key
+from iron_editor.components.signer import sign_content, strip_and_verify, load_identity
 
 
 class IronEdit(TextArea):
@@ -79,8 +79,8 @@ class IronEdit(TextArea):
             if p.is_file():
                 raw_content = p.read_text(encoding="utf-8")
                 ext = p.suffix.lower()
-                secret_key = load_secret_key()
-                clean_content, has_sig, is_valid = strip_and_verify(
+                _, secret_key = load_identity()
+                clean_content, has_sig, is_valid, signer_id = strip_and_verify(
                     raw_content, p.name, ext, secret_key
                 )
                 if not has_sig:
@@ -105,7 +105,7 @@ class IronEdit(TextArea):
                 self.current_file = str(p)
                 self._saved_text = self.text
                 self.language = self.__get_language_from_extension(p.suffix)
-                self._log(f"Abierto: {path} | Lenguaje: {self.language}")
+                self._log(f"Abierto: {path} | Lenguaje: {self.language} | Firmado por: {signer_id or 'default'}")
                 self._update_save_binding_visibility()
         except Exception as e:
             self._log(f"Error opening file: {e}")
@@ -118,8 +118,8 @@ class IronEdit(TextArea):
             try:
                 p = pathlib.Path(self.current_file)
                 ext = p.suffix.lower()
-                secret_key = load_secret_key()
-                signed_text = sign_content(self.text, p.name, ext, secret_key)
+                student_id, secret_key = load_identity()
+                signed_text = sign_content(self.text, p.name, ext, secret_key, student_id)
                 p.write_text(signed_text, encoding="utf-8")
                 self._saved_text = self.text
                 self._update_save_binding_visibility()
